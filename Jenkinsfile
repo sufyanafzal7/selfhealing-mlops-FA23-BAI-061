@@ -33,26 +33,26 @@ pipeline {
                 echo 'Running headless Selenium browser tests...'
                 sh '''
                     /DevOps/monitoring/venv/bin/python -m pip install -r /DevOps/app/requirements.txt
-                    
+
                     # Kill any lingering test engines on port 5000 to prevent collisions
                     pkill -f "app.py" || true
                     rm -f /tmp/app_test.log
-                    
+
                     cd /DevOps/app
                     export JENKINS_NODE_COOKIE=dontKillMe
-                    
+
                     # Start Flask locally on Port 5000 for verification testing
                     nohup /DevOps/monitoring/venv/bin/python app.py > /tmp/app_test.log 2>&1 &
-                    
+
                     # Give the server ample time to download/initialize the pipeline
                     sleep 15
-                    
+
                     if ! pgrep -f "app.py" > /dev/null; then
                         echo "=== APPLICATION CRASHED EARLY. LOGS BELOW ==="
                         cat /tmp/app_test.log
                         exit 1
                     fi
-                    
+
                     /DevOps/monitoring/venv/bin/python -m pytest /DevOps/tests/test_ui.py
                     pkill -f "app.py" || true
                 '''
@@ -61,12 +61,17 @@ pipeline {
         stage('Build and Push') {
             steps {
                 echo 'Pushing images to DockerHub...'
-                sh '''
-                    cd app
-                    docker tag ${DOCKER_USER}/${APP_NAME}:unstable ${DOCKER_USER}/${APP_NAME}:stable
-                    docker push ${DOCKER_USER}/${APP_NAME}:unstable
-                    docker push ${DOCKER_USER}/${APP_NAME}:stable
-                '''
+                // Use your pre-configured Jenkins text credential ID for safe injection
+                withCredentials([string(credentialsId: 'dockerhub-token', variable: 'DOCKER_TOKEN')]) {
+                    sh '''
+                        echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USER" --password-stdin
+                        cd app
+                        docker tag ${DOCKER_USER}/${APP_NAME}:unstable ${DOCKER_USER}/${APP_NAME}:stable
+                        docker push ${DOCKER_USER}/${APP_NAME}:unstable
+                        docker push ${DOCKER_USER}/${APP_NAME}:stable
+                        docker logout
+                    '''
+                }
             }
         }
         stage('Deploy to Minikube') {
@@ -82,4 +87,3 @@ pipeline {
         }
     }
 }
-
