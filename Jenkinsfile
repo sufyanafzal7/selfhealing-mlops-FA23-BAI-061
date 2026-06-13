@@ -34,10 +34,25 @@ pipeline {
                 sh '''
                     /DevOps/monitoring/venv/bin/python -m pip install -r /DevOps/app/requirements.txt
                     cd /DevOps/app
+                    
+                    # Prevent Jenkins from killing our background Flask server
+                    export JENKINS_NODE_COOKIE=dontKillMe
+                    
+                    # Start Flask using the absolute venv python binary path
                     nohup /DevOps/monitoring/venv/bin/python app.py > /tmp/app_test.log 2>&1 &
-                    sleep 8
+                    
+                    # Give the server ample time to download/load the sentiment model weights
+                    sleep 12
+                    
+                    # Check if the app crashed early, and print logs if it did
+                    if ! pgrep -f "app.py" > /dev/null; then
+                        echo "=== APPLICATION CRASHED EARLY. LOGS BELOW ==="
+                        cat /tmp/app_test.log
+                        exit 1
+                    fi
+                    
                     /DevOps/monitoring/venv/bin/python -m pytest /DevOps/tests/test_ui.py
-                    pkill -f "python app.py" || true
+                    pkill -f "app.py" || true
                 '''
             }
         }
