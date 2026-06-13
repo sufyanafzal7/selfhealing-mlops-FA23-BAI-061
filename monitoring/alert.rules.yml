@@ -1,0 +1,11 @@
+groups:
+  - name: mlops_performance_rules
+    rules:
+      - alert: ModelConfidenceDrift
+        expr: prediction_confidence_score < 0.683
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Model data concept drift detected on endpoint"
+          description: "Model performance score dropped below assignment threshold baseline."

@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sentiment-green-deployment
+  labels:
+    app: sentiment-api
+    slot: green
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sentiment-api
+      slot: green
+  template:
+    metadata:
+      labels:
+        app: sentiment-api
+        slot: green
+    spec:
+      containers:
+        - name: api-container
+          image: sufyanafzal7/sentiment-api:stable
+          ports:
+            - containerPort: 8000
+          env:
+            - name: MODEL_VERSION
+              value: "stable-v0-5B9E"
