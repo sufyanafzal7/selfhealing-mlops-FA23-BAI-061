@@ -35,7 +35,7 @@ pipeline {
                     /DevOps/monitoring/venv/bin/python -m pip install -r /DevOps/app/requirements.txt
                     cd /DevOps/app
                     nohup /DevOps/monitoring/venv/bin/python app.py > /tmp/app_test.log 2>&1 &
-                    sleep 5
+                    sleep 8
                     /DevOps/monitoring/venv/bin/python -m pytest /DevOps/tests/test_ui.py
                     pkill -f "python app.py" || true
                 '''
