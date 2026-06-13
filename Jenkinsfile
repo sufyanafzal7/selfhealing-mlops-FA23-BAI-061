@@ -33,18 +33,20 @@ pipeline {
                 echo 'Running headless Selenium browser tests...'
                 sh '''
                     /DevOps/monitoring/venv/bin/python -m pip install -r /DevOps/app/requirements.txt
-                    cd /DevOps/app
                     
-                    # Prevent Jenkins from killing our background Flask server
+                    # Kill any lingering test engines on port 5000 to prevent collisions
+                    pkill -f "app.py" || true
+                    rm -f /tmp/app_test.log
+                    
+                    cd /DevOps/app
                     export JENKINS_NODE_COOKIE=dontKillMe
                     
-                    # Start Flask using the absolute venv python binary path
+                    # Start Flask locally on Port 5000 for verification testing
                     nohup /DevOps/monitoring/venv/bin/python app.py > /tmp/app_test.log 2>&1 &
                     
-                    # Give the server ample time to download/load the sentiment model weights
-                    sleep 12
+                    # Give the server ample time to download/initialize the pipeline
+                    sleep 15
                     
-                    # Check if the app crashed early, and print logs if it did
                     if ! pgrep -f "app.py" > /dev/null; then
                         echo "=== APPLICATION CRASHED EARLY. LOGS BELOW ==="
                         cat /tmp/app_test.log
@@ -80,3 +82,4 @@ pipeline {
         }
     }
 }
+
