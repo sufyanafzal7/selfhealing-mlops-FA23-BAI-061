@@ -78,6 +78,9 @@ pipeline {
             steps {
                 echo 'Deploying resources to Minikube cluster...'
                 sh '''
+                    # Direct kubectl to use the authenticated cluster configuration mapping
+                    export KUBECONFIG=/home/ubuntu/.kube/config
+                    
                     kubectl apply -f k8s/pvc.yaml
                     kubectl apply -f k8s/blue-deployment.yaml
                     kubectl apply -f k8s/green-deployment.yaml
