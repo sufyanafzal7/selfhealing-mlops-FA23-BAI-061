@@ -24,7 +24,7 @@ pipeline {
                 echo 'Running PyTest units...'
                 sh '''
                     cd /DevOps/monitoring
-                    source venv/bin/activate
+                    . venv/bin/activate
                     cd /DevOps
                     pytest tests/test_app.py
                 '''
@@ -38,7 +38,7 @@ pipeline {
                     nohup python app.py > /tmp/app_test.log 2>&1 &
                     sleep 5
                     cd /DevOps/monitoring
-                    source venv/bin/activate
+                    . venv/bin/activate
                     cd /DevOps
                     pytest tests/test_ui.py
                     pkill -f "python app.py" || true
