@@ -1,11 +1,11 @@
 pipeline {
     agent any
-    
+
     environment {
         DOCKER_USER = 'sufyanafzal7'
         APP_NAME    = 'sentiment-api'
     }
-    
+
     stages {
         stage('Fetch') {
             steps {
@@ -23,10 +23,7 @@ pipeline {
             steps {
                 echo 'Running PyTest units...'
                 sh '''
-                    cd /DevOps/monitoring
-                    . venv/bin/activate
-                    cd /DevOps
-                    pytest tests/test_app.py
+                    /DevOps/monitoring/venv/bin/python -m pytest /DevOps/tests/test_app.py
                 '''
             }
         }
@@ -34,13 +31,10 @@ pipeline {
             steps {
                 echo 'Running headless Selenium browser tests...'
                 sh '''
-                    cd app
-                    nohup python app.py > /tmp/app_test.log 2>&1 &
+                    cd /DevOps/app
+                    nohup /DevOps/monitoring/venv/bin/python app.py > /tmp/app_test.log 2>&1 &
                     sleep 5
-                    cd /DevOps/monitoring
-                    . venv/bin/activate
-                    cd /DevOps
-                    pytest tests/test_ui.py
+                    /DevOps/monitoring/venv/bin/python -m pytest /DevOps/tests/test_ui.py
                     pkill -f "python app.py" || true
                 '''
             }
