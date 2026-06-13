@@ -23,6 +23,7 @@ pipeline {
             steps {
                 echo 'Running PyTest units...'
                 sh '''
+                    /DevOps/monitoring/venv/bin/python -m pip install pytest requests
                     /DevOps/monitoring/venv/bin/python -m pytest /DevOps/tests/test_app.py
                 '''
             }
@@ -31,6 +32,7 @@ pipeline {
             steps {
                 echo 'Running headless Selenium browser tests...'
                 sh '''
+                    /DevOps/monitoring/venv/bin/python -m pip install selenium pytest requests
                     cd /DevOps/app
                     nohup /DevOps/monitoring/venv/bin/python app.py > /tmp/app_test.log 2>&1 &
                     sleep 5
