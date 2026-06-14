@@ -21,7 +21,8 @@ spec:
         - name: api-container
           image: sufyanafzal7/sentiment-api:stable
           ports:
-            - containerPort: 8000
+            - containerPort: 5000
           env:
             - name: MODEL_VERSION
               value: "stable-v0-5B9E"
+

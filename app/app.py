@@ -7,8 +7,11 @@ app = Flask(__name__)
 # Initialize the Sentiment Analysis pipeline
 classifier = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
 
+# Custom state variable to allow deliberate concept drift simulation
 concept_drift_injected = False
+
 MODEL_VERSION = os.getenv("MODEL_VERSION", "unstable-v1")
+STABLE_CODE = "5B9E"
 
 @app.route("/", methods=["GET", "POST"])
 def home():
@@ -31,7 +34,7 @@ def home():
     <body style="font-family: Arial; margin: 40px; background: #f4f6f9;">
         <h2>Sentiment Analysis Engine (System Field: {{ version }})</h2>
         <form method="POST">
-            <textarea id="text-input" name="text" rows="4" style="width:100%; font-size:16px;">{{ text }}</textarea><br><br>
+            <textarea id="text-input" name="text" rows="4" style="width:100%; font-size:16px;" placeholder="Input your analysis text string here...">{{ text }}</textarea><br><br>
             <button id="submit-btn" type="submit" style="padding: 10px 20px; font-size: 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">Analyze Text Sentiment</button>
         </form>
         {% if prediction %}
@@ -73,6 +76,10 @@ def inject_drift():
     concept_drift_injected = True
     return jsonify({"status": "drift_injected"})
 
+@app.route("/api/latest-confidence", methods=["GET"])
+def latest_confidence():
+    return jsonify({"confidence": 1.0})
+
 def process_prediction(text):
     if not concept_drift_injected:
         result = classifier(text)[0]
@@ -81,5 +88,5 @@ def process_prediction(text):
         return {"label": "POSITIVE", "score": 0.512}
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
+    app.run(host="0.0.0.0", port=5000)
 

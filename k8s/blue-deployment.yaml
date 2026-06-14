@@ -21,7 +21,7 @@ spec:
         - name: api-container
           image: sufyanafzal7/sentiment-api:unstable
           ports:
-            - containerPort: 8000
+            - containerPort: 5000
           env:
             - name: MODEL_VERSION
               value: "unstable-v1"
