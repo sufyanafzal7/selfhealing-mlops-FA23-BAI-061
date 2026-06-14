@@ -10,7 +10,7 @@ def test_frontend_sentiment():
     chrome_options.add_argument("--disable-dev-shm-usage")
     driver = webdriver.Chrome(options=chrome_options)
     try:
-        driver.get("http://localhost:5000/")
+        driver.get("http://localhost:8000/")
         time.sleep(3)
         text_input = driver.find_element(By.ID, "text-input")
         text_input.send_keys("The engineering design was beautiful and functional.")
