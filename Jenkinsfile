@@ -21,28 +21,31 @@ pipeline {
         }
         stage('Unit Test') {
             steps {
-                echo 'Starting application process context for API unit evaluations...'
+                echo 'Starting application container context for API unit evaluations...'
                 sh '''
-                    export HF_HOME=/DevOps/hf_cache
-                    /DevOps/monitoring/venv/bin/python -m pip install -r /DevOps/app/requirements.txt
-                    pkill -f "app.py" || true
+                    # Stop and clear any existing test container to ensure a clean slate
+                    docker rm -f sentiment-api-test || true
 
-                    cd /DevOps/app
-                    export JENKINS_NODE_COOKIE=dontKillMe
-                    nohup /DevOps/monitoring/venv/bin/python app.py > /tmp/app_test.log 2>&1 &
-                    sleep 15
+                    # Run the container built in the previous stage, mapping the HuggingFace cache directory
+                    docker run -d -p 5000:5000 --name sentiment-api-test -v /DevOps/hf_cache:/root/.cache/huggingface ${DOCKER_USER}/${APP_NAME}:unstable
+                    
+                    # Give the container's native, supported Python 3.10 environment time to map model weights
+                    sleep 30
 
+                    # Run pytest from the host's lightweight venv against the live container port
                     /DevOps/monitoring/venv/bin/python -m pytest /DevOps/tests/test_api.py
                 '''
             }
         }
         stage('UI Test') {
             steps {
-                echo 'Running headless Selenium browser tests against active process context...'
+                echo 'Running headless Selenium browser tests against active container context...'
                 sh '''
-                    export HF_HOME=/DevOps/hf_cache
+                    # Execute your UI tests against the active container port
                     /DevOps/monitoring/venv/bin/python -m pytest /DevOps/tests/test_ui.py
-                    pkill -f "app.py" || true
+                    
+                    # Tear down and clean up the test container cleanly
+                    docker rm -f sentiment-api-test || true
                 '''
             }
         }
