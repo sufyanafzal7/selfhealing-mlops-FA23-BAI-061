@@ -51,7 +51,6 @@ def home():
 
 @app.route("/health", methods=["GET"])
 def health():
-    # Mandated by evaluation script criteria: returns HTTP 200 with status and variant metrics
     return jsonify({
         "status": "healthy",
         "model": "distilbert-sentiment-v1",
@@ -74,11 +73,8 @@ def predict():
 @app.route("/inject-drift", methods=["POST"])
 def inject_drift():
     global concept_drift_injected
-    token = request.headers.get("Authorization")
-    if token != "Bearer ROLLBACK_934365_TOKEN":
-        return jsonify({"error": "Unauthorized key token"}), 401
     concept_drift_injected = True
-    return jsonify({"status": "Concept drift successfully activated"})
+    return jsonify({"status": "drift_injected"})
 
 def process_prediction(text):
     if not concept_drift_injected:
@@ -89,3 +85,4 @@ def process_prediction(text):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+

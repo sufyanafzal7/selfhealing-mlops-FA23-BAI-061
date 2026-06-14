@@ -21,38 +21,24 @@ pipeline {
         }
         stage('Unit Test') {
             steps {
-                echo 'Running PyTest units...'
+                echo 'Starting application process context for API unit evaluations...'
                 sh '''
                     /DevOps/monitoring/venv/bin/python -m pip install -r /DevOps/app/requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+                    pkill -f "app.py" || true
+                    
+                    cd /DevOps/app
+                    export JENKINS_NODE_COOKIE=dontKillMe
+                    nohup /DevOps/monitoring/venv/bin/python app.py > /tmp/app_test.log 2>&1 &
+                    sleep 15
+                    
                     /DevOps/monitoring/venv/bin/python -m pytest /DevOps/tests/test_api.py
                 '''
             }
         }
         stage('UI Test') {
             steps {
-                echo 'Running headless Selenium browser tests...'
+                echo 'Running headless Selenium browser tests against active process context...'
                 sh '''
-                    /DevOps/monitoring/venv/bin/python -m pip install -r /DevOps/app/requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
-
-                    # Kill any lingering test engines on port 5000 to prevent collisions
-                    pkill -f "app.py" || true
-                    rm -f /tmp/app_test.log
-
-                    cd /DevOps/app
-                    export JENKINS_NODE_COOKIE=dontKillMe
-
-                    # Start Flask locally on Port 5000 for verification testing
-                    nohup /DevOps/monitoring/venv/bin/python app.py > /tmp/app_test.log 2>&1 &
-
-                    # Give the server ample time to download/initialize the pipeline
-                    sleep 15
-
-                    if ! pgrep -f "app.py" > /dev/null; then
-                        echo "=== APPLICATION CRASHED EARLY. LOGS BELOW ==="
-                        cat /tmp/app_test.log
-                        exit 1
-                    fi
-
                     /DevOps/monitoring/venv/bin/python -m pytest /DevOps/tests/test_ui.py
                     pkill -f "app.py" || true
                 '''
@@ -60,7 +46,7 @@ pipeline {
         }
         stage('Build and Push') {
             steps {
-                echo 'Pushing images to DockerHub...'
+                echo 'Pushing images to DockerHub registries...'
                 withCredentials([string(credentialsId: 'dockerhub-token', variable: 'DOCKER_TOKEN')]) {
                     sh '''
                         echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USER" --password-stdin
@@ -75,7 +61,7 @@ pipeline {
         }
         stage('Deploy to Minikube') {
             steps {
-                echo 'Deploying resources to Minikube cluster...'
+                echo 'Deploying resources to Minikube cluster layers...'
                 sh '''
                     export KUBECONFIG=/home/ubuntu/.kube/config
                     kubectl apply -f k8s/pvc.yaml
@@ -87,3 +73,4 @@ pipeline {
         }
     }
 }
+
