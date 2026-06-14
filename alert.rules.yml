@@ -1,0 +1,11 @@
+groups:
+  - name: ml_drift_rules
+    rules:
+      - alert: ModelConfidenceDrift
+        expr: prediction_confidence_score < 0.683
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Machine learning model concept drift detected via custom exporter telemetry stream"
+
