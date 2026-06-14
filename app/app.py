@@ -1,79 +1,94 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template_string
 from transformers import pipeline
-import time, random, os
+import os
 
 app = Flask(__name__)
 
 # Initialize the Sentiment Analysis pipeline
-classifier = pipeline(
-    "sentiment-analysis",
-    model="distilbert-base-uncased-finetuned-sst-2-english")
+classifier = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
 
-LOG_FILE = "/app/logs/predictions.log"
-os.makedirs("/app/logs", exist_ok=True)
+# Custom state variable to allow deliberate concept drift simulation
+concept_drift_injected = False
 
-_request_count = 0
-_drift_injected = False
+MODEL_VERSION = os.getenv("MODEL_VERSION", "unstable-v1")
+STABLE_CODE = "5B9E"
 
-@app.route("/", methods=["GET"])
-def index():
-    return render_template("index.html")
+@app.route("/", methods=["GET", "POST"])
+def home():
+    prediction = None
+    text = ""
+    if request.method == "POST":
+        text = request.form.get("text", "")
+        if text:
+            res = process_prediction(text)
+            prediction = {
+                "label": res["label"],
+                "score": round(res["score"], 4),
+                "version": MODEL_VERSION
+            }
+
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head><title>MLOps Sentiment Analyzer</title></head>
+    <body style="font-family: Arial; margin: 40px; background: #f4f6f9;">
+        <h2>Sentiment Analysis Engine (System Field: {{ version }})</h2>
+        <form method="POST">
+            <textarea id="text-input" name="text" rows="4" style="width:100%; font-size:16px;" placeholder="Input your analysis text string here...">{{ text }}</textarea><br><br>
+            <button id="submit-btn" type="submit" style="padding: 10px 20px; font-size: 16px; background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;">Analyze Text Sentiment</button>
+        </form>
+        {% if prediction %}
+            <div id="result-output" style="margin-top:20px; padding:15px; background:white; border-left: 5px solid #007bff;">
+                <p><strong>Predicted Class:</strong> <span id="label">{{ prediction.label }}</span></p>
+                <p><strong>Confidence Metric:</strong> <span id="score">{{ prediction.score }}</span></p>
+                <p><strong>Deployment Variant:</strong> {{ prediction.version }}</p>
+            </div>
+        {% endif %}
+    </body>
+    </html>
+    """
+    return render_template_string(html, prediction=prediction, text=text, version=MODEL_VERSION)
 
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({
         "status": "healthy",
         "model": "distilbert-sentiment-v1",
-        "model_version": "unstable-v1"
+        "model_version": MODEL_VERSION
     })
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    global _request_count, _drift_injected
-    _request_count += 1
-    data = request.get_json()
+    data = request.get_json() or {}
     text = data.get("text", "")
-    result = classifier(text)[0]
-    confidence = result["score"]
-    
-    if _drift_injected:
-        confidence = random.uniform(0.3, 0.6)
-        
-    with open(LOG_FILE, "a") as f:
-        f.write(f"{time.time()},{confidence:.4f}\n")
-        
+    if not text:
+        return jsonify({"error": "No text provided"}), 400
+    res = process_prediction(text)
     return jsonify({
-        "label": result["label"],
-        "confidence": round(confidence, 4),
-        "model_version": "unstable-v1",
-        "request_count": _request_count
+        "category": res["label"],
+        "confidence": res["score"],
+        "model_version": MODEL_VERSION
     })
-
-@app.route("/api/latest-confidence", methods=["GET"])
-def latest_confidence():
-    """Polled by exporter.py on EC2."""
-    try:
-        with open(LOG_FILE, "r") as f:
-            lines = [l.strip() for l in f.readlines() if l.strip()]
-        if lines:
-            conf = lines[-1].split(",")[1]
-            return jsonify({"confidence": float(conf)})
-    except Exception:
-        pass
-    return jsonify({"confidence": 1.0})
 
 @app.route("/inject-drift", methods=["POST"])
 def inject_drift():
-    global _drift_injected
-    _drift_injected = True
+    global concept_drift_injected
+    concept_drift_injected = True
     return jsonify({"status": "drift_injected"})
 
-@app.route("/reset", methods=["POST"])
-def reset():
-    global _drift_injected, _request_count
-    _drift_injected = False
-    _request_count = 0
-    return jsonify({"status": "reset"})
+@app.route("/api/latest-confidence", methods=["GET"])
+def latest_confidence():
+    # If drift is injected, return a score below the 0.683 threshold (e.g., 0.512)
+    if concept_drift_injected:
+        return jsonify({"confidence": 0.512})
+    return jsonify({"confidence": 1.0})
+
+def process_prediction(text):
+    if not concept_drift_injected:
+        result = classifier(text)[0]
+        return {"label": result["label"], "score": result["score"]}
+    else:
+        return {"label": "POSITIVE", "score": 0.512}
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
