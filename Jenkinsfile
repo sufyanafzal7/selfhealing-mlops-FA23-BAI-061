@@ -29,7 +29,7 @@ pipeline {
                     cd /DevOps/app
                     export JENKINS_NODE_COOKIE=dontKillMe
                     nohup /DevOps/monitoring/venv/bin/python app.py > /tmp/app_test.log 2>&1 &
-                    sleep 15
+                    sleep 35
                     
                     /DevOps/monitoring/venv/bin/python -m pytest /DevOps/tests/test_api.py
                 '''
