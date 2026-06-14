@@ -23,8 +23,8 @@ pipeline {
             steps {
                 echo 'Running PyTest units...'
                 sh '''
-                    /DevOps/monitoring/venv/bin/python -m pip install -r /DevOps/app/requirements.txt
-                    /DevOps/monitoring/venv/bin/python -m pytest /DevOps/tests/test_app.py
+                    /DevOps/monitoring/venv/bin/python -m pip install -r /DevOps/app/requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+                    /DevOps/monitoring/venv/bin/python -m pytest /DevOps/tests/test_api.py
                 '''
             }
         }
@@ -32,7 +32,7 @@ pipeline {
             steps {
                 echo 'Running headless Selenium browser tests...'
                 sh '''
-                    /DevOps/monitoring/venv/bin/python -m pip install -r /DevOps/app/requirements.txt
+                    /DevOps/monitoring/venv/bin/python -m pip install -r /DevOps/app/requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
 
                     # Kill any lingering test engines on port 5000 to prevent collisions
                     pkill -f "app.py" || true
@@ -61,7 +61,6 @@ pipeline {
         stage('Build and Push') {
             steps {
                 echo 'Pushing images to DockerHub...'
-                // Use your pre-configured Jenkins text credential ID for safe injection
                 withCredentials([string(credentialsId: 'dockerhub-token', variable: 'DOCKER_TOKEN')]) {
                     sh '''
                         echo "$DOCKER_TOKEN" | docker login -u "$DOCKER_USER" --password-stdin
@@ -78,9 +77,7 @@ pipeline {
             steps {
                 echo 'Deploying resources to Minikube cluster...'
                 sh '''
-                    # Direct kubectl to use the authenticated cluster configuration mapping
                     export KUBECONFIG=/home/ubuntu/.kube/config
-                    
                     kubectl apply -f k8s/pvc.yaml
                     kubectl apply -f k8s/blue-deployment.yaml
                     kubectl apply -f k8s/green-deployment.yaml
