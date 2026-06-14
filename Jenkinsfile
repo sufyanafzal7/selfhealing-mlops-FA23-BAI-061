@@ -23,14 +23,15 @@ pipeline {
             steps {
                 echo 'Starting application process context for API unit evaluations...'
                 sh '''
-                    /DevOps/monitoring/venv/bin/python -m pip install -r /DevOps/app/requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu
+                    export HF_HOME=/DevOps/hf_cache
+                    /DevOps/monitoring/venv/bin/python -m pip install -r /DevOps/app/requirements.txt
                     pkill -f "app.py" || true
-                    
+
                     cd /DevOps/app
                     export JENKINS_NODE_COOKIE=dontKillMe
                     nohup /DevOps/monitoring/venv/bin/python app.py > /tmp/app_test.log 2>&1 &
-                    sleep 35
-                    
+                    sleep 15
+
                     /DevOps/monitoring/venv/bin/python -m pytest /DevOps/tests/test_api.py
                 '''
             }
@@ -39,6 +40,7 @@ pipeline {
             steps {
                 echo 'Running headless Selenium browser tests against active process context...'
                 sh '''
+                    export HF_HOME=/DevOps/hf_cache
                     /DevOps/monitoring/venv/bin/python -m pytest /DevOps/tests/test_ui.py
                     pkill -f "app.py" || true
                 '''
